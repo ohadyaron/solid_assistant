@@ -32,6 +32,15 @@ export function HomePage() {
             Generate Part →
           </Link>
         </div>
+
+        <div className="feature-card">
+          <div className="feature-icon">👁️</div>
+          <h3>3D STEP Viewer</h3>
+          <p>View and interact with STEP files directly in your browser</p>
+          <Link to="/viewer" className="feature-link">
+            Open Viewer →
+          </Link>
+        </div>
       </div>
 
       <div className="info-section">

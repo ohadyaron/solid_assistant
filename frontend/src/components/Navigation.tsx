@@ -36,6 +36,12 @@ export function Navigation() {
           >
             Generator
           </Link>
+          <Link 
+            to="/viewer" 
+            className={`nav-link ${isActive('/viewer') ? 'active' : ''}`}
+          >
+            Viewer
+          </Link>
         </div>
       </div>
     </nav>

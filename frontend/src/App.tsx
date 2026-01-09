@@ -9,6 +9,7 @@ import { Navigation } from './components/Navigation';
 import { HomePage } from './pages/HomePage';
 import { InterpretPage } from './pages/InterpretPage';
 import { PartsPage } from './pages/PartsPage';
+import { ViewerPage } from './pages/ViewerPage';
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/interpret" element={<InterpretPage />} />
               <Route path="/parts" element={<PartsPage />} />
+              <Route path="/viewer" element={<ViewerPage />} />
             </Routes>
           </main>
           <footer className="footer">
