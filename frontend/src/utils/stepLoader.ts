@@ -105,10 +105,19 @@ export async function loadStepFile(url: string): Promise<OcctResult> {
   const fileBuffer = new Uint8Array(buffer);
 
   // Parse the STEP file with OCCT
-  const result = occt.ReadStepFile(fileBuffer, null);
+  const result = occt.ReadStepFile(fileBuffer, {
+    linearDeflection: 0.001,
+    angularDeflection: 0.1,
+    quality: 1.0,
+    edgeLength: 0.001
+  });
 
   if (!result.success) {
     throw new Error('Failed to parse STEP file');
+  }
+
+  if (!result.meshes || result.meshes.length === 0) {
+    throw new Error('No meshes found in STEP file');
   }
 
   return result;
@@ -132,6 +141,16 @@ export function createGeometryFromOcctMesh(mesh: OcctMesh): THREE.BufferGeometry
     );
   }
 
+  // Set index attribute - check both attributes.index and root level index
+  const indexData = mesh.attributes.index || (mesh as any).index;
+  if (indexData && indexData.array) {
+    const indices = indexData.array;
+    const indexArray = indices instanceof Uint32Array || indices instanceof Uint16Array 
+      ? indices 
+      : new Uint32Array(indices);
+    geometry.setIndex(new THREE.BufferAttribute(indexArray, 1));
+  }
+
   // Set normal attribute for lighting
   if (mesh.attributes.normal) {
     const normals = mesh.attributes.normal.array;
@@ -140,15 +159,9 @@ export function createGeometryFromOcctMesh(mesh: OcctMesh): THREE.BufferGeometry
       'normal',
       new THREE.BufferAttribute(normalArray, 3)
     );
-  }
-
-  // Set index attribute for efficient rendering
-  if (mesh.attributes.index) {
-    const indices = mesh.attributes.index.array;
-    const indexArray = indices instanceof Uint32Array || indices instanceof Uint16Array 
-      ? indices 
-      : new Uint32Array(indices);
-    geometry.setIndex(new THREE.BufferAttribute(indexArray, 1));
+  } else {
+    // Compute vertex normals if not provided
+    geometry.computeVertexNormals();
   }
 
   // Compute bounding box and sphere for camera fitting

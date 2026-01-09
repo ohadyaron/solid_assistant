@@ -40,7 +40,7 @@ function StepMesh({ geometry, color, name }: {
     <mesh geometry={geometry} name={name}>
       <meshStandardMaterial
         color={color}
-        side={THREE.DoubleSide}
+        side={THREE.FrontSide}
         metalness={0.3}
         roughness={0.7}
       />

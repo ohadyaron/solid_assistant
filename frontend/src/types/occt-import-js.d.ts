@@ -4,6 +4,11 @@
  */
 
 declare module 'occt-import-js' {
+  export interface TessellationParams {
+    linearDeflection?: number;
+    angularDeflection?: number;
+  }
+
   export interface OcctMesh {
     name: string;
     color: [number, number, number];
@@ -13,13 +18,13 @@ declare module 'occt-import-js' {
     }>;
     attributes: {
       position: {
-        array: Float32Array;
+        array: Float32Array | number[];
       };
       normal: {
-        array: Float32Array;
+        array: Float32Array | number[];
       };
-      index: {
-        array: Uint32Array;
+      index?: {
+        array: Uint32Array | number[];
       };
     };
   }
@@ -35,9 +40,9 @@ declare module 'occt-import-js' {
   }
 
   export interface OcctImportJS {
-    ReadStepFile: (content: Uint8Array, params: null) => OcctResult;
-    ReadBrepFile: (content: Uint8Array, params: null) => OcctResult;
-    ReadIgesFile: (content: Uint8Array, params: null) => OcctResult;
+    ReadStepFile: (content: Uint8Array, params: TessellationParams | null) => OcctResult;
+    ReadBrepFile: (content: Uint8Array, params: TessellationParams | null) => OcctResult;
+    ReadIgesFile: (content: Uint8Array, params: TessellationParams | null) => OcctResult;
   }
 
   function occtimportjs(): Promise<OcctImportJS>;
