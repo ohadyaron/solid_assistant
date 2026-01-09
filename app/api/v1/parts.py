@@ -31,7 +31,7 @@ async def generate_part(part: CadPart) -> PartGenerationResult:
     Raises:
         HTTPException: If generation fails
     """
-    result = part_service.generate_part(part)
+    result = await part_service.generate_part_async(part)
     
     if result.status == "error":
         raise HTTPException(

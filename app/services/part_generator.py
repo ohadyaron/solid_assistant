@@ -2,7 +2,8 @@
 Part generation service.
 Orchestrates CAD building, validation, and export.
 """
-import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple
@@ -24,6 +25,7 @@ class PartGenerationService:
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._executor = ThreadPoolExecutor(max_workers=4)
     
     def _ensure_step_extension(self, filename: str) -> str:
         """
@@ -153,3 +155,49 @@ class PartGenerationService:
                 status="error",
                 message=f"Error generating part: {str(e)}"
             )
+    
+    async def generate_part_async(self, part: CadPart) -> PartGenerationResult:
+        """
+        Async version: Generate a STEP file from a CAD part specification.
+        
+        Runs the CPU-intensive CAD operations in a thread pool to avoid
+        blocking the event loop.
+        
+        Args:
+            part: CadPart specification
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self.generate_part,
+            part
+        )
+    
+    async def generate_part_with_name_async(
+        self,
+        part: CadPart,
+        filename: str
+    ) -> PartGenerationResult:
+        """
+        Async version: Generate a STEP file with a specific filename.
+        
+        Runs the CPU-intensive CAD operations in a thread pool to avoid
+        blocking the event loop.
+        
+        Args:
+            part: CadPart specification
+            filename: Desired filename (without extension)
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self.generate_part_with_name,
+            part,
+            filename
+        )

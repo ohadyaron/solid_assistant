@@ -8,6 +8,7 @@ A FastAPI-based mechanical assistant that generates CAD parts from natural langu
 - **Deterministic CAD Generation**: Creates precise STEP files using CadQuery
 - **Rule-Based Validation**: Enforces CNC manufacturing constraints
 - **LLM-Powered Interpretation**: Uses LangChain and OpenAI to extract structured intent from user input
+- **Fully Async Architecture**: All API endpoints are async with non-blocking I/O and thread pool execution for CPU-intensive CAD operations
 
 ## Project Structure
 
