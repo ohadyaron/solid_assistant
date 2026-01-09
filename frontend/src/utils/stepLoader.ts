@@ -17,11 +17,29 @@ async function loadOcct(): Promise<OcctImportJS> {
     return occtInstance;
   }
 
-  // Dynamically import occt-import-js
-  const occtimportjs = (await import('occt-import-js')).default;
-  const instance = await occtimportjs();
-  occtInstance = instance;
-  return instance;
+  try {
+    // Dynamically import occt-import-js
+    // The module exports a function that returns a promise
+    const module = await import('occt-import-js');
+    
+    // Handle both CommonJS and ES module exports
+    let occtimportjs;
+    if (typeof module.default === 'function') {
+      occtimportjs = module.default;
+    } else if (typeof module === 'function') {
+      occtimportjs = module;
+    } else {
+      throw new Error('Unexpected module format');
+    }
+    
+    // Call the function to initialize OCCT
+    const instance = await occtimportjs();
+    occtInstance = instance;
+    return instance;
+  } catch (error) {
+    console.error('Failed to load OCCT module:', error);
+    throw new Error(`Failed to initialize OCCT WebAssembly module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**

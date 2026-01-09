@@ -13,12 +13,13 @@ const sampleModels = [
   {
     name: 'Sample Cube',
     url: '/models/sample-cube.step',
-    description: 'A simple cube model for testing',
+    description: 'A simple cube model for testing (if available)',
   },
+  // Add more sample models as needed
 ];
 
 export function ViewerPage() {
-  const [selectedUrl, setSelectedUrl] = useState<string>(sampleModels[0].url);
+  const [selectedUrl, setSelectedUrl] = useState<string>('');
   const [customUrl, setCustomUrl] = useState<string>('');
   const [useCustomUrl, setUseCustomUrl] = useState<boolean>(false);
 
@@ -115,16 +116,40 @@ export function ViewerPage() {
 
         <div className="viewer-main">
           <div className="viewer-toolbar">
-            <span className="current-model">
-              {useCustomUrl ? 'Custom URL' : sampleModels.find((m) => m.url === selectedUrl)?.name || 'Unknown'}
-            </span>
-            {displayUrl && (
-              <span className="model-url" title={displayUrl}>
-                {displayUrl}
-              </span>
+            {displayUrl ? (
+              <>
+                <span className="current-model">
+                  {useCustomUrl ? 'Custom URL' : sampleModels.find((m) => m.url === selectedUrl)?.name || 'Unknown'}
+                </span>
+                <span className="model-url" title={displayUrl}>
+                  {displayUrl}
+                </span>
+              </>
+            ) : (
+              <span className="current-model">Select a model or enter a URL to begin</span>
             )}
           </div>
-          <StepViewer fileUrl={displayUrl} />
+          {displayUrl ? (
+            <StepViewer fileUrl={displayUrl} />
+          ) : (
+            <div className="viewer-placeholder">
+              <div className="placeholder-content">
+                <h3>Welcome to the STEP File Viewer</h3>
+                <p>
+                  To get started, you can:
+                </p>
+                <ul>
+                  <li>Select a sample model from the sidebar</li>
+                  <li>Enter a custom URL to a STEP file</li>
+                  <li>Generate a STEP file using the <a href="/parts">Parts Generator</a> and load it here</li>
+                </ul>
+                <p className="setup-note">
+                  <strong>Note:</strong> To use sample models, copy test files from the occt-import-js package:
+                  <code>cp node_modules/occt-import-js/test/testfiles/cube-fcstd/cube.step public/models/sample-cube.step</code>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
