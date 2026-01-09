@@ -4,8 +4,10 @@ Tests the generic CAD generator and its builder classes.
 """
 import pytest
 from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
 from app.cad.generator import CADGenerator
 from app.cad.cadquery_builder import CadQueryBuilder
+from app.cad.solidworks_builder import SolidWorksBuilder
 from app.domain.intent import PartIntent, DimensionIntent, HoleIntent, FilletIntent
 
 
@@ -305,3 +307,232 @@ def test_cadquery_builder_partial_fillet_data(tmp_path):
     filepath = builder.build(part, tmp_path)
     
     assert filepath.exists()
+
+
+# ============================================================================
+# MOCKED SOLIDWORKS TESTS (can run on macOS without SolidWorks)
+# ============================================================================
+
+@pytest.fixture
+def mock_solidworks_modules():
+    """Fixture to mock win32com and pythoncom modules."""
+    with patch.dict('sys.modules', {
+        'win32com': MagicMock(),
+        'win32com.client': MagicMock(),
+        'pythoncom': MagicMock()
+    }):
+        import sys
+        # Setup the mocked modules to be returned properly
+        yield sys.modules
+
+
+def test_solidworks_builder_simple_box_mocked(tmp_path, mock_solidworks_modules):
+    """Test SolidWorks builder with mocked COM API (runs on macOS)."""
+    import sys
+    
+    # Setup mock behavior
+    mock_app = MagicMock()
+    mock_model = MagicMock()
+    mock_extension = MagicMock()
+    
+    # Configure the Dispatch mock to return our mock app
+    mock_dispatch = Mock(return_value=mock_app)
+    sys.modules['win32com'].client = MagicMock()
+    sys.modules['win32com'].client.Dispatch = mock_dispatch
+    
+    mock_app.NewDocument.return_value = mock_model
+    mock_app.GetUserPreferenceStringValue.return_value = "default_template"
+    mock_model.Extension = mock_extension
+    mock_extension.SelectByID2.return_value = True
+    mock_model.GetTitle.return_value = "MockPart"
+    mock_model.SaveAs.return_value = True
+    
+    # Create builder and part
+    builder = SolidWorksBuilder()
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    # Build the part
+    filepath = builder.build(part, tmp_path)
+    
+    # Verify mocks were called
+    sys.modules['pythoncom'].CoInitialize.assert_called()
+    mock_dispatch.assert_called_with("SldWorks.Application")
+    mock_app.NewDocument.assert_called()
+    
+    # Verify file path
+    assert filepath.parent == tmp_path
+    assert filepath.suffix == ".sldprt"
+    assert "part_" in filepath.name
+
+
+def test_solidworks_builder_with_features_mocked(tmp_path, mock_solidworks_modules):
+    """Test SolidWorks builder with holes and fillets (mocked, runs on macOS)."""
+    import sys
+    
+    # Setup mock behavior
+    mock_app = MagicMock()
+    mock_model = MagicMock()
+    mock_extension = MagicMock()
+    
+    mock_dispatch = Mock(return_value=mock_app)
+    sys.modules['win32com'].client = MagicMock()
+    sys.modules['win32com'].client.Dispatch = mock_dispatch
+    
+    mock_app.NewDocument.return_value = mock_model
+    mock_app.GetUserPreferenceStringValue.return_value = "default_template"
+    mock_model.Extension = mock_extension
+    mock_extension.SelectByID2.return_value = True
+    mock_model.GetTitle.return_value = "MockPart"
+    mock_model.SaveAs.return_value = True
+    
+    # Create builder and part with features
+    builder = SolidWorksBuilder()
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=100.0, height=50.0),
+        holes=[
+            HoleIntent(diameter=20.0, depth=30.0, location="center")
+        ],
+        fillets=[
+            FilletIntent(radius=5.0, location="all edges")
+        ]
+    )
+    
+    # Build the part
+    filepath = builder.build(part, tmp_path)
+    
+    # Verify the builder called methods for holes and fillets
+    # InsertSketch2 should be called for sketch operations
+    assert mock_model.InsertSketch2.called
+    
+    # Verify file creation
+    assert filepath.suffix == ".sldprt"
+
+
+def test_solidworks_builder_validation_mocked():
+    """Test SolidWorks builder validation (doesn't need mocking)."""
+    builder = SolidWorksBuilder()
+    
+    # Test missing shape
+    part = PartIntent(
+        shape=None,
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    with pytest.raises(ValueError, match="shape is required"):
+        builder.validate(part)
+    
+    # Test missing dimensions
+    part = PartIntent(
+        shape="box",
+        dimensions=None
+    )
+    
+    with pytest.raises(ValueError, match="dimensions are required"):
+        builder.validate(part)
+
+
+def test_solidworks_via_generator_mocked(tmp_path, mock_solidworks_modules):
+    """Test SolidWorks engine via CADGenerator (mocked, runs on macOS)."""
+    import sys
+    
+    # Setup mock behavior
+    mock_app = MagicMock()
+    mock_model = MagicMock()
+    mock_extension = MagicMock()
+    
+    mock_dispatch = Mock(return_value=mock_app)
+    sys.modules['win32com'].client = MagicMock()
+    sys.modules['win32com'].client.Dispatch = mock_dispatch
+    
+    mock_app.NewDocument.return_value = mock_model
+    mock_app.GetUserPreferenceStringValue.return_value = "default_template"
+    mock_model.Extension = mock_extension
+    mock_extension.SelectByID2.return_value = True
+    mock_model.GetTitle.return_value = "MockPart"
+    mock_model.SaveAs.return_value = True
+    
+    # Create generator and part
+    generator = CADGenerator(output_dir=str(tmp_path))
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    # Generate using SolidWorks engine
+    result = generator.generate(part, engine="solidworks")
+    
+    # Verify result
+    assert result["status"] == "ok"
+    assert result["file_path"] != ""
+    assert result["file_path"].endswith(".sldprt")
+    assert result["errors"] == []
+
+
+def test_solidworks_builder_save_failure_mocked(tmp_path, mock_solidworks_modules):
+    """Test SolidWorks builder handles save failures (mocked, runs on macOS)."""
+    import sys
+    
+    # Setup mock behavior with save failure
+    mock_app = MagicMock()
+    mock_model = MagicMock()
+    mock_extension = MagicMock()
+    
+    mock_dispatch = Mock(return_value=mock_app)
+    sys.modules['win32com'].client = MagicMock()
+    sys.modules['win32com'].client.Dispatch = mock_dispatch
+    
+    mock_app.NewDocument.return_value = mock_model
+    mock_app.GetUserPreferenceStringValue.return_value = "default_template"
+    mock_model.Extension = mock_extension
+    mock_extension.SelectByID2.return_value = True
+    mock_model.GetTitle.return_value = "MockPart"
+    mock_model.SaveAs.return_value = False  # Simulate save failure
+    
+    # Create builder and part
+    builder = SolidWorksBuilder()
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    # Build should raise RuntimeError on save failure
+    with pytest.raises(RuntimeError, match="Failed to save SolidWorks part"):
+        builder.build(part, tmp_path)
+
+
+def test_solidworks_builder_cleanup_on_error_mocked(tmp_path, mock_solidworks_modules):
+    """Test SolidWorks builder cleanup on error (mocked, runs on macOS)."""
+    import sys
+    
+    # Setup mock behavior with error during creation
+    mock_app = MagicMock()
+    mock_model = MagicMock()
+    
+    mock_dispatch = Mock(return_value=mock_app)
+    sys.modules['win32com'].client = MagicMock()
+    sys.modules['win32com'].client.Dispatch = mock_dispatch
+    
+    mock_app.NewDocument.return_value = mock_model
+    mock_app.GetUserPreferenceStringValue.return_value = "default_template"
+    mock_model.GetTitle.return_value = "MockPart"
+    
+    # Simulate error during model creation
+    mock_model.Extension.SelectByID2.side_effect = Exception("Mock error")
+    
+    # Create builder and part
+    builder = SolidWorksBuilder()
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    # Build should handle error and cleanup
+    with pytest.raises(RuntimeError, match="Failed to build SLDPRT file"):
+        builder.build(part, tmp_path)
+    
+    # Verify cleanup was attempted
+    sys.modules['pythoncom'].CoUninitialize.assert_called()
