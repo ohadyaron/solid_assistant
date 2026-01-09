@@ -25,6 +25,35 @@ class PartGenerationService:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
+    def _ensure_step_extension(self, filename: str) -> str:
+        """
+        Ensure filename has .step extension.
+        
+        Args:
+            filename: Filename with or without extension
+            
+        Returns:
+            Filename with .step extension
+        """
+        if not filename.endswith('.step'):
+            return f"{filename}.step"
+        return filename
+    
+    def _build_result_message(self, warnings: list) -> str:
+        """
+        Build result message including warnings if present.
+        
+        Args:
+            warnings: List of warning messages
+            
+        Returns:
+            Result message string
+        """
+        message = "Part generated successfully"
+        if warnings:
+            message += f". Warnings: {'; '.join(warnings)}"
+        return message
+    
     def generate_part(self, part: CadPart) -> PartGenerationResult:
         """
         Generate a STEP file from a CAD part specification.
@@ -58,9 +87,7 @@ class PartGenerationService:
             builder.export_step(str(filepath))
             
             # Prepare result message
-            message = "Part generated successfully"
-            if warnings:
-                message += f". Warnings: {'; '.join(warnings)}"
+            message = self._build_result_message(warnings)
             
             return PartGenerationResult(
                 step_file_path=str(filepath),
@@ -103,9 +130,7 @@ class PartGenerationService:
                 )
             
             # Ensure .step extension
-            if not filename.endswith('.step'):
-                filename = f"{filename}.step"
-            
+            filename = self._ensure_step_extension(filename)
             filepath = self.output_dir / filename
             
             # Build and export CAD model
@@ -114,9 +139,7 @@ class PartGenerationService:
             builder.export_step(str(filepath))
             
             # Prepare result message
-            message = "Part generated successfully"
-            if warnings:
-                message += f". Warnings: {'; '.join(warnings)}"
+            message = self._build_result_message(warnings)
             
             return PartGenerationResult(
                 step_file_path=str(filepath),

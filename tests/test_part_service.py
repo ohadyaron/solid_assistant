@@ -102,9 +102,10 @@ def test_generate_part_with_warnings(tmp_path):
     assert "warning" in result.message.lower()
 
 
-def test_output_directory_creation():
+def test_output_directory_creation(tmp_path):
     """Test that output directory is created if it doesn't exist."""
-    service = PartGenerationService(output_dir="/tmp/test_mechanical_output")
+    test_dir = tmp_path / "test_mechanical_output"
+    service = PartGenerationService(output_dir=str(test_dir))
     
     assert service.output_dir.exists()
     assert service.output_dir.is_dir()

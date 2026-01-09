@@ -46,21 +46,30 @@ Examples of what NOT to do:
 
 If critical information is missing, add it to the missing_information list."""
     
-    def __init__(self, api_key: Optional[str] = None, temperature: float = 0):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        temperature: float = 0,
+        model: Optional[str] = None
+    ):
         """
         Initialize the interpreter.
         
         Args:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
             temperature: LLM temperature (0 for deterministic)
+            model: Model name (defaults to OPENAI_MODEL env var or gpt-3.5-turbo)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key required (set OPENAI_API_KEY env var)")
         
+        # Get model name from parameter, env var, or default
+        self.model = model or os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+        
         # Initialize LLM with temperature=0 for deterministic output
         self.llm = ChatOpenAI(
-            model="gpt-3.5-turbo",
+            model=self.model,
             temperature=temperature,
             api_key=self.api_key
         )
