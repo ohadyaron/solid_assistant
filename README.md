@@ -1,6 +1,6 @@
 # Mechanical Assistant
 
-A FastAPI-based mechanical assistant that generates CAD parts from natural language descriptions.
+A FastAPI-based mechanical assistant that generates CAD parts from natural language descriptions, with a modern React + TypeScript frontend.
 
 ## Features
 
@@ -9,33 +9,44 @@ A FastAPI-based mechanical assistant that generates CAD parts from natural langu
 - **Rule-Based Validation**: Enforces CNC manufacturing constraints
 - **LLM-Powered Interpretation**: Uses LangChain and OpenAI to extract structured intent from user input
 - **Fully Async Architecture**: All API endpoints are async with non-blocking I/O and thread pool execution for CPU-intensive CAD operations
+- **Modern React Frontend**: Production-ready frontend with TypeScript, React Router, React Query, and comprehensive testing
 
 ## Project Structure
 
 ```
 mechanical-assistant/
-├── app/
+├── app/                           # Backend API (Python/FastAPI)
 │   ├── api/
 │   │   └── v1/
-│   │       ├── parts.py        # STEP file generation endpoint
-│   │       └── interpret.py    # Natural language interpretation endpoint
-│   ├── cad/                    # CAD builder using CadQuery
+│   │       ├── parts.py          # STEP file generation endpoint
+│   │       └── interpret.py      # Natural language interpretation endpoint
+│   ├── cad/                      # CAD builder using CadQuery
 │   ├── domain/
-│   │   ├── models.py           # CAD Part schemas
-│   │   └── intent.py           # LLM input/output schemas
-│   ├── llm/                    # LangChain + LLM interpreter
-│   ├── rules/                  # Validation rules engine
-│   ├── services/               # Part generation logic
-│   └── main.py                 # FastAPI entry point
-├── tests/                      # Pytest tests
-├── pyproject.toml              # Poetry dependencies
-├── .gitignore
-└── README.md
+│   │   ├── models.py             # CAD Part schemas
+│   │   └── intent.py             # LLM input/output schemas
+│   ├── llm/                      # LangChain + LLM interpreter
+│   ├── rules/                    # Validation rules engine
+│   ├── services/                 # Part generation logic
+│   └── main.py                   # FastAPI entry point
+├── frontend/                      # Frontend application (React/TypeScript)
+│   ├── src/
+│   │   ├── components/           # Reusable UI components
+│   │   ├── pages/                # Page components
+│   │   ├── hooks/                # Custom React hooks
+│   │   ├── services/             # API client
+│   │   └── types/                # TypeScript types (auto-generated from OpenAPI)
+│   ├── package.json              # Node dependencies
+│   └── README.md                 # Frontend documentation
+├── tests/                         # Backend tests
+├── pyproject.toml                # Poetry dependencies
+└── README.md                     # This file
 ```
 
-## Setup
+## Quick Start
 
-### Prerequisites
+### Backend Setup
+
+#### Prerequisites
 
 - **Python 3.10, 3.11, or 3.12** (NOT 3.13 - see [DEPENDENCIES.md](DEPENDENCIES.md))
 - **Poetry** for dependency management
@@ -81,46 +92,6 @@ For the `/api/v1/interpret` endpoint (optional if you only use `/api/v1/parts`):
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-Or create a `.env` file:
-```bash
-echo "OPENAI_API_KEY=your-openai-api-key" > .env
-```
-
-### Running Tests
-
-Run all tests (39 tests, takes ~2 seconds):
-
-```bash
-poetry run pytest tests/ -v
-```
-
-Run specific test file:
-```bash
-poetry run pytest tests/test_generator.py -v
-```
-
-Run with short tracebacks:
-```bash
-poetry run pytest tests/ -v --tb=short
-```
-
-Run specific test:
-```bash
-poetry run pytest tests/test_generator.py::test_generator_initialization -v
-```
-
-**Expected output:**
-```
-===== test session starts =====
-collected 39 items
-
-tests/test_async_endpoints.py::test_concurrent_part_generation PASSED [  2%]
-tests/test_async_endpoints.py::test_health_endpoints_async PASSED     [  5%]
-...
-===== 39 passed in 2.06s =====
-```
-
-### Running the Server
 
 #### Development Mode (with auto-reload):
 
@@ -196,6 +167,65 @@ source $(poetry env info --path)/bin/activate
 deactivate
 ```
 
+### Frontend Setup
+
+#### Prerequisites
+
+- Node.js 18+ and npm
+
+#### Installation
+
+1. Navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Configure environment (optional):
+```bash
+cp .env.example .env
+# Edit .env if your backend is not running on http://localhost:8000
+```
+
+#### Running the Frontend
+
+Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`
+
+#### Building for Production
+
+```bash
+npm run build
+```
+
+The production build will be in the `frontend/dist/` directory.
+
+## Full Stack Development
+
+To run both backend and frontend together:
+
+1. **Terminal 1 - Backend**:
+```bash
+cd solid_assistant
+poetry run uvicorn app.main:app --reload
+```
+
+2. **Terminal 2 - Frontend**:
+```bash
+cd frontend
+npm run dev
+```
+
+3. Open `http://localhost:5173` in your browser
+
 ## API Endpoints
 
 ### POST /api/v1/interpret
@@ -247,6 +277,10 @@ Generates a STEP file from validated CAD part specification.
 
 ## Troubleshooting
 
+### Backend Tests
+
+Run tests with pytest:
+=======
 ### Tests are slow or stuck
 - **Problem:** Tests hang during collection or take >30 seconds
 - **Solution:** Ensure numpy < 2.0 is installed. See [DEPENDENCIES.md](DEPENDENCIES.md) for details.
@@ -276,6 +310,45 @@ poetry run pip install cadquery==2.4.0 'cadquery-ocp>=7.7.0,<7.8'
 export OPENAI_API_KEY="your-key-here"
 ```
 
+### Frontend Tests
+
+Run frontend tests:
+```bash
+cd frontend
+npm test
+```
+
+Run tests with UI:
+```bash
+npm run test:ui
+```
+
+## Frontend Features
+
+The React frontend provides a user-friendly interface for the API:
+
+### Pages
+- **Home Page** (`/`) - Overview and quick navigation
+- **Interpreter Page** (`/interpret`) - Natural language input form with real-time interpretation
+- **Generator Page** (`/parts`) - CAD part specification form with dynamic fields
+
+### Technology Stack
+- **React 19** with functional components and hooks
+- **TypeScript** for type safety
+- **React Router v6** for client-side routing
+- **React Query** for data fetching and caching
+- **React Hook Form** for form handling and validation
+- **Axios** for API communication
+- **Vitest + React Testing Library** for testing
+- **ESLint + Prettier** for code quality
+
+### Key Features
+- Type-safe API client auto-generated from OpenAPI spec
+- Loading and error states for all API calls
+- Form validation with user-friendly error messages
+- Responsive design for mobile and desktop
+- Comprehensive test coverage
+=======
 For complete dependency information, see [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## Development
