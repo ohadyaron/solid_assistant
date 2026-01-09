@@ -85,12 +85,13 @@ def test_generate_part_with_warnings(tmp_path):
     """Test generating a part that produces warnings."""
     service = PartGenerationService(output_dir=str(tmp_path))
     
-    # Create part with deep hole (causes warning)
+    # Create part with deep hole that causes depth-to-diameter warning
+    # Depth/diameter = 60/5 = 12, which exceeds MAX_HOLE_DEPTH_RATIO of 10
     part = CadPart(
         shape="box",
-        dimensions=Dimensions(length=100, width=100, height=50),
+        dimensions=Dimensions(length=100, width=100, height=70),
         holes=[
-            Hole(diameter=5, depth=48, position=Position(x=0, y=0, z=0))
+            Hole(diameter=5, depth=60, position=Position(x=0, y=0, z=0))
         ]
     )
     
