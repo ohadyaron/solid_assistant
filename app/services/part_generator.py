@@ -1,0 +1,203 @@
+"""
+Part generation service.
+Orchestrates CAD building, validation, and export.
+"""
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from typing import Tuple
+
+from app.domain.models import CadPart, PartGenerationResult
+from app.cad import CadBuilder
+from app.rules import validate_part, ValidationError
+
+
+class PartGenerationService:
+    """Service for generating CAD parts."""
+    
+    def __init__(self, output_dir: str = "output"):
+        """
+        Initialize the part generation service.
+        
+        Args:
+            output_dir: Directory for output STEP files
+        """
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._executor = ThreadPoolExecutor(max_workers=4)
+    
+    def _ensure_step_extension(self, filename: str) -> str:
+        """
+        Ensure filename has .step extension.
+        
+        Args:
+            filename: Filename with or without extension
+            
+        Returns:
+            Filename with .step extension
+        """
+        if not filename.endswith('.step'):
+            return f"{filename}.step"
+        return filename
+    
+    def _build_result_message(self, warnings: list) -> str:
+        """
+        Build result message including warnings if present.
+        
+        Args:
+            warnings: List of warning messages
+            
+        Returns:
+            Result message string
+        """
+        message = "Part generated successfully"
+        if warnings:
+            message += f". Warnings: {'; '.join(warnings)}"
+        return message
+    
+    def generate_part(self, part: CadPart) -> PartGenerationResult:
+        """
+        Generate a STEP file from a CAD part specification.
+        
+        Args:
+            part: CadPart specification
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        try:
+            # Validate the part
+            is_valid, errors, warnings = validate_part(part)
+            
+            if not is_valid:
+                error_msg = "Validation failed: " + "; ".join(errors)
+                return PartGenerationResult(
+                    step_file_path="",
+                    status="error",
+                    message=error_msg
+                )
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"part_{timestamp}.step"
+            filepath = self.output_dir / filename
+            
+            # Build and export CAD model
+            builder = CadBuilder()
+            builder.build_part(part)
+            builder.export_step(str(filepath))
+            
+            # Prepare result message
+            message = self._build_result_message(warnings)
+            
+            return PartGenerationResult(
+                step_file_path=str(filepath),
+                status="success",
+                message=message
+            )
+            
+        except Exception as e:
+            return PartGenerationResult(
+                step_file_path="",
+                status="error",
+                message=f"Error generating part: {str(e)}"
+            )
+    
+    def generate_part_with_name(
+        self,
+        part: CadPart,
+        filename: str
+    ) -> PartGenerationResult:
+        """
+        Generate a STEP file with a specific filename.
+        
+        Args:
+            part: CadPart specification
+            filename: Desired filename (without extension)
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        try:
+            # Validate the part
+            is_valid, errors, warnings = validate_part(part)
+            
+            if not is_valid:
+                error_msg = "Validation failed: " + "; ".join(errors)
+                return PartGenerationResult(
+                    step_file_path="",
+                    status="error",
+                    message=error_msg
+                )
+            
+            # Ensure .step extension
+            filename = self._ensure_step_extension(filename)
+            filepath = self.output_dir / filename
+            
+            # Build and export CAD model
+            builder = CadBuilder()
+            builder.build_part(part)
+            builder.export_step(str(filepath))
+            
+            # Prepare result message
+            message = self._build_result_message(warnings)
+            
+            return PartGenerationResult(
+                step_file_path=str(filepath),
+                status="success",
+                message=message
+            )
+            
+        except Exception as e:
+            return PartGenerationResult(
+                step_file_path="",
+                status="error",
+                message=f"Error generating part: {str(e)}"
+            )
+    
+    async def generate_part_async(self, part: CadPart) -> PartGenerationResult:
+        """
+        Async version: Generate a STEP file from a CAD part specification.
+        
+        Runs the CPU-intensive CAD operations in a thread pool to avoid
+        blocking the event loop.
+        
+        Args:
+            part: CadPart specification
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self.generate_part,
+            part
+        )
+    
+    async def generate_part_with_name_async(
+        self,
+        part: CadPart,
+        filename: str
+    ) -> PartGenerationResult:
+        """
+        Async version: Generate a STEP file with a specific filename.
+        
+        Runs the CPU-intensive CAD operations in a thread pool to avoid
+        blocking the event loop.
+        
+        Args:
+            part: CadPart specification
+            filename: Desired filename (without extension)
+            
+        Returns:
+            PartGenerationResult with file path and status
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            self.generate_part_with_name,
+            part,
+            filename
+        )
