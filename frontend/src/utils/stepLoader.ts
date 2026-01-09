@@ -7,6 +7,41 @@ import type { OcctImportJS, OcctResult, OcctMesh } from 'occt-import-js';
 
 // Lazy load occt-import-js module
 let occtInstance: OcctImportJS | null = null;
+let occtLoadPromise: Promise<OcctImportJS> | null = null;
+
+/**
+ * Load the OCCT script dynamically via script tag
+ * This is necessary because occt-import-js is a UMD module
+ */
+function loadOcctScript(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if ((window as any).occtimportjs) {
+      resolve((window as any).occtimportjs);
+      return;
+    }
+
+    // Create script element
+    const script = document.createElement('script');
+    script.src = '/node_modules/occt-import-js/dist/occt-import-js.js';
+    script.async = true;
+    
+    script.onload = () => {
+      // The UMD module should now be available on window
+      if ((window as any).occtimportjs) {
+        resolve((window as any).occtimportjs);
+      } else {
+        reject(new Error('occt-import-js script loaded but occtimportjs not found on window'));
+      }
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Failed to load occt-import-js script'));
+    };
+    
+    document.head.appendChild(script);
+  });
+}
 
 /**
  * Initialize and load the OCCT WebAssembly module
@@ -17,29 +52,37 @@ async function loadOcct(): Promise<OcctImportJS> {
     return occtInstance;
   }
 
-  try {
-    // Dynamically import occt-import-js
-    // The module exports a function that returns a promise
-    const module = await import('occt-import-js');
-    
-    // Handle both CommonJS and ES module exports
-    let occtimportjs;
-    if (typeof module.default === 'function') {
-      occtimportjs = module.default;
-    } else if (typeof module === 'function') {
-      occtimportjs = module;
-    } else {
-      throw new Error('Unexpected module format');
-    }
-    
-    // Call the function to initialize OCCT
-    const instance = await occtimportjs();
-    occtInstance = instance;
-    return instance;
-  } catch (error) {
-    console.error('Failed to load OCCT module:', error);
-    throw new Error(`Failed to initialize OCCT WebAssembly module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  // If already loading, return the same promise
+  if (occtLoadPromise) {
+    return occtLoadPromise;
   }
+
+  occtLoadPromise = (async () => {
+    try {
+      console.log('Loading OCCT module via script tag...');
+      
+      // Load the UMD module via script tag
+      const occtFactory = await loadOcctScript();
+      console.log('OCCT factory loaded:', typeof occtFactory);
+      
+      if (typeof occtFactory !== 'function') {
+        throw new Error('occt-import-js did not export a function. Type: ' + typeof occtFactory);
+      }
+      
+      console.log('Initializing OCCT WebAssembly...');
+      // Call the factory function to initialize the OCCT WebAssembly instance
+      const instance = await occtFactory();
+      console.log('OCCT instance created successfully');
+      occtInstance = instance;
+      return instance;
+    } catch (error) {
+      console.error('Failed to load OCCT module:', error);
+      occtLoadPromise = null; // Reset so we can try again
+      throw new Error(`Failed to initialize OCCT WebAssembly module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  })();
+
+  return occtLoadPromise;
 }
 
 /**
@@ -81,23 +124,31 @@ export function createGeometryFromOcctMesh(mesh: OcctMesh): THREE.BufferGeometry
 
   // Set position attribute (vertices)
   if (mesh.attributes.position) {
+    const positions = mesh.attributes.position.array;
+    const positionArray = positions instanceof Float32Array ? positions : new Float32Array(positions);
     geometry.setAttribute(
       'position',
-      new THREE.BufferAttribute(mesh.attributes.position.array, 3)
+      new THREE.BufferAttribute(positionArray, 3)
     );
   }
 
   // Set normal attribute for lighting
   if (mesh.attributes.normal) {
+    const normals = mesh.attributes.normal.array;
+    const normalArray = normals instanceof Float32Array ? normals : new Float32Array(normals);
     geometry.setAttribute(
       'normal',
-      new THREE.BufferAttribute(mesh.attributes.normal.array, 3)
+      new THREE.BufferAttribute(normalArray, 3)
     );
   }
 
   // Set index attribute for efficient rendering
   if (mesh.attributes.index) {
-    geometry.setIndex(new THREE.BufferAttribute(mesh.attributes.index.array, 1));
+    const indices = mesh.attributes.index.array;
+    const indexArray = indices instanceof Uint32Array || indices instanceof Uint16Array 
+      ? indices 
+      : new Uint32Array(indices);
+    geometry.setIndex(new THREE.BufferAttribute(indexArray, 1));
   }
 
   // Compute bounding box and sphere for camera fitting
@@ -115,11 +166,15 @@ export function createGeometryFromOcctMesh(mesh: OcctMesh): THREE.BufferGeometry
 export function convertOcctResultToMeshes(result: OcctResult) {
   return result.meshes.map((mesh) => {
     const geometry = createGeometryFromOcctMesh(mesh);
-    const color = new THREE.Color(
-      mesh.color[0] / 255,
-      mesh.color[1] / 255,
-      mesh.color[2] / 255
-    );
+    
+    // Default to gray if color is undefined
+    const color = mesh.color && mesh.color.length >= 3
+      ? new THREE.Color(
+          mesh.color[0] / 255,
+          mesh.color[1] / 255,
+          mesh.color[2] / 255
+        )
+      : new THREE.Color(0.7, 0.7, 0.7);
 
     return {
       geometry,

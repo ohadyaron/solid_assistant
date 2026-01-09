@@ -59,6 +59,38 @@ async def health_check():
     }
 
 
+@router.get("/parts/list")
+async def list_parts():
+    """
+    List all generated STEP files.
+    
+    Returns:
+        List of STEP file information
+    """
+    try:
+        step_files = sorted(
+            part_service.output_dir.glob("*.step"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True  # Most recent first
+        )
+        
+        return {
+            "files": [
+                {
+                    "filename": file.name,
+                    "created_at": file.stat().st_mtime,
+                    "size": file.stat().st_size
+                }
+                for file in step_files
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list files: {str(e)}"
+        )
+
+
 @router.get("/parts/download/{filename}")
 async def download_part(filename: str):
     """

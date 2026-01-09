@@ -4,8 +4,9 @@
  * Demonstrates the StepViewer component with example STEP files.
  * Allows users to select from predefined models or use generated STEP files from the API.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StepViewer } from '../components/StepViewer';
+import { api, getStepFileUrl } from '../services/api';
 import './ViewerPage.css';
 
 // Predefined sample models
@@ -18,12 +19,43 @@ const sampleModels = [
   // Add more sample models as needed
 ];
 
+interface GeneratedFile {
+  filename: string;
+  created_at: number;
+  size: number;
+}
+
 export function ViewerPage() {
   const [selectedUrl, setSelectedUrl] = useState<string>('');
   const [customUrl, setCustomUrl] = useState<string>('');
   const [useCustomUrl, setUseCustomUrl] = useState<boolean>(false);
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState<boolean>(false);
+
+  // Load generated files on mount
+  useEffect(() => {
+    const loadGeneratedFiles = async () => {
+      setLoadingFiles(true);
+      try {
+        const result = await api.listParts();
+        setGeneratedFiles(result.files);
+      } catch (error) {
+        console.error('Failed to load generated files:', error);
+      } finally {
+        setLoadingFiles(false);
+      }
+    };
+
+    loadGeneratedFiles();
+  }, []);
 
   const handleModelSelect = (url: string) => {
+    setSelectedUrl(url);
+    setUseCustomUrl(false);
+  };
+
+  const handleGeneratedFileSelect = (filename: string) => {
+    const url = getStepFileUrl(filename);
     setSelectedUrl(url);
     setUseCustomUrl(false);
   };
@@ -50,6 +82,32 @@ export function ViewerPage() {
 
       <div className="viewer-content">
         <div className="viewer-sidebar">
+          <div className="viewer-section">
+            <h3>Generated Parts</h3>
+            {loadingFiles ? (
+              <p>Loading...</p>
+            ) : generatedFiles.length > 0 ? (
+              <div className="model-list">
+                {generatedFiles.map((file) => (
+                  <button
+                    key={file.filename}
+                    className={`model-button ${!useCustomUrl && selectedUrl === getStepFileUrl(file.filename) ? 'active' : ''}`}
+                    onClick={() => handleGeneratedFileSelect(file.filename)}
+                  >
+                    <div className="model-name">{file.filename}</div>
+                    <div className="model-description">
+                      {new Date(file.created_at * 1000).toLocaleString()} • {(file.size / 1024).toFixed(1)} KB
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="helper-text">
+                No parts generated yet. Visit the <a href="/parts">Parts Generator</a> to create one.
+              </p>
+            )}
+          </div>
+
           <div className="viewer-section">
             <h3>Sample Models</h3>
             <div className="model-list">

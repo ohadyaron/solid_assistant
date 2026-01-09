@@ -69,6 +69,15 @@ apiClient.interceptors.response.use(
 );
 
 /**
+ * Helper function to construct STEP file download URL
+ */
+export function getStepFileUrl(filename: string): string {
+  // Extract just the filename if a full path is provided
+  const justFilename = filename.split('/').pop() || filename.split('\\').pop() || filename;
+  return `${API_BASE_URL}/api/v1/parts/download/${justFilename}`;
+}
+
+/**
  * API Service Methods
  */
 export const api = {
@@ -99,6 +108,14 @@ export const api = {
       '/api/v1/parts',
       part
     );
+    return response.data;
+  },
+
+  /**
+   * List all generated STEP files
+   */
+  listParts: async (): Promise<{ files: Array<{ filename: string; created_at: number; size: number }> }> => {
+    const response = await apiClient.get('/api/v1/parts/list');
     return response.data;
   },
 };

@@ -6,6 +6,8 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useGeneratePart } from '../hooks/useGeneratePart';
 import { Loading } from '../components/Loading';
 import { ErrorDisplay } from '../components/ErrorDisplay';
+import { StepViewer } from '../components/StepViewer';
+import { getStepFileUrl } from '../services/api';
 import type { CadPart, Hole, Fillet, PartGenerationResult } from '../services/api';
 import './PartsPage.css';
 
@@ -363,7 +365,12 @@ export function PartsPage() {
               >
                 📥 Download STEP File
               </button>
-              <p className="result-note">
+              
+              <div className="step-viewer-wrapper" style={{ marginTop: '20px', height: '500px', width: '100%', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                <StepViewer fileUrl={getStepFileUrl(result.step_file_path)} />
+              </div>
+              
+              <p className="result-note" style={{ marginTop: '10px' }}>
                 The STEP file has been generated and saved on the server.
               </p>
             </div>
