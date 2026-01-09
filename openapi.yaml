@@ -1,0 +1,504 @@
+openapi: 3.0.3
+info:
+  title: Mechanical Assistant API
+  description: |
+    Generate CAD parts from natural language descriptions.
+    
+    This API provides two main workflows:
+    1. **Interpret** - Convert natural language to structured intent
+    2. **Generate** - Create STEP files from CAD specifications
+    
+    ## Workflow
+    
+    1. Send natural language to `/api/v1/interpret`
+    2. Review the structured intent and fill in missing information
+    3. Send complete CAD specification to `/api/v1/parts`
+    4. Download the generated STEP file
+    
+  version: 0.1.0
+  contact:
+    name: Mechanical Assistant
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: http://0.0.0.0:8000
+    description: Local network server
+
+tags:
+  - name: interpret
+    description: Natural language interpretation endpoints
+  - name: parts
+    description: CAD part generation endpoints
+  - name: health
+    description: Health check endpoints
+
+paths:
+  /:
+    get:
+      summary: Root endpoint
+      description: Returns API information and available endpoints
+      operationId: root
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Mechanical Assistant API
+                  version:
+                    type: string
+                    example: 0.1.0
+                  description:
+                    type: string
+                    example: Generate CAD parts from natural language descriptions
+                  endpoints:
+                    type: object
+                    additionalProperties:
+                      type: string
+
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API
+      operationId: healthCheck
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /api/v1/interpret:
+    post:
+      summary: Interpret natural language
+      description: |
+        Convert a natural language description into a structured part intent.
+        
+        This endpoint uses LangChain and OpenAI to:
+        - Extract parameters explicitly mentioned in the text
+        - Identify missing critical information
+        - Enforce output matches PartIntent schema
+        - Never invent or assume geometry not stated
+        
+        **Note:** Requires OpenAI API key to be configured in environment variables.
+      operationId: interpretText
+      tags:
+        - interpret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterpretRequest'
+            examples:
+              simple:
+                summary: Simple box request
+                value:
+                  text: "Create a box 100mm long, 50mm wide, and 30mm tall"
+              with_holes:
+                summary: Box with holes
+                value:
+                  text: "Make a 200x100x50mm aluminum block with a 10mm diameter hole in the center, depth 20mm"
+              with_fillets:
+                summary: Box with fillets
+                value:
+                  text: "100mm cube with 5mm fillets on all edges"
+      responses:
+        '200':
+          description: Successfully interpreted natural language
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterpretResponse'
+        '500':
+          description: Configuration or interpretation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /api/v1/parts:
+    post:
+      summary: Generate CAD part
+      description: |
+        Generate a STEP file from a validated CAD part specification.
+        
+        This endpoint:
+        1. Validates the part against CNC manufacturing rules
+        2. Builds the CAD model deterministically using CadQuery
+        3. Exports the result as a STEP file
+        
+        **Manufacturing constraints:**
+        - Minimum dimensions: 10mm
+        - Maximum dimensions: 1000mm
+        - Minimum hole diameter: 1mm
+        - Minimum fillet radius: 0.5mm
+      operationId: generatePart
+      tags:
+        - parts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CadPart'
+            examples:
+              simple_box:
+                summary: Simple box
+                value:
+                  shape: box
+                  dimensions:
+                    length: 100
+                    width: 50
+                    height: 30
+                  material: aluminum
+              box_with_hole:
+                summary: Box with centered hole
+                value:
+                  shape: box
+                  dimensions:
+                    length: 100
+                    width: 50
+                    height: 30
+                  holes:
+                    - diameter: 10
+                      depth: 20
+                      position:
+                        x: 0
+                        y: 0
+                        z: 0
+                  material: aluminum
+              box_with_fillets:
+                summary: Box with fillets
+                value:
+                  shape: box
+                  dimensions:
+                    length: 100
+                    width: 50
+                    height: 30
+                  fillets:
+                    - radius: 5
+                      edges: all
+                  material: steel
+      responses:
+        '200':
+          description: Successfully generated STEP file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartGenerationResult'
+        '400':
+          description: Invalid part specification or generation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /api/v1/parts/health:
+    get:
+      summary: Parts service health check
+      description: Check if the parts generation service is operational
+      operationId: partsHealthCheck
+      tags:
+        - parts
+        - health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  service:
+                    type: string
+                    example: parts
+
+components:
+  schemas:
+    InterpretRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Natural language description of the part
+          example: "Create a 100mm box with a 10mm hole in the center"
+
+    InterpretResponse:
+      type: object
+      required:
+        - intent
+      properties:
+        intent:
+          $ref: '#/components/schemas/PartIntent'
+
+    PartIntent:
+      type: object
+      properties:
+        shape:
+          type: string
+          enum:
+            - box
+          nullable: true
+          description: Base shape type extracted from text
+        dimensions:
+          $ref: '#/components/schemas/DimensionIntent'
+        holes:
+          type: array
+          items:
+            $ref: '#/components/schemas/HoleIntent'
+          default: []
+          description: List of holes mentioned in text
+        fillets:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilletIntent'
+          default: []
+          description: List of fillets mentioned in text
+        material:
+          type: string
+          nullable: true
+          description: Material mentioned in text
+          example: aluminum
+        missing_information:
+          type: array
+          items:
+            type: string
+          default: []
+          description: List of missing critical information
+      example:
+        shape: box
+        dimensions:
+          length: 100
+          width: 50
+          height: 30
+        holes:
+          - diameter: 10
+            depth: 20
+            location: center
+        fillets:
+          - radius: 5
+            location: all edges
+        material: aluminum
+        missing_information: []
+
+    DimensionIntent:
+      type: object
+      properties:
+        length:
+          type: number
+          format: float
+          nullable: true
+          description: Length in mm
+        width:
+          type: number
+          format: float
+          nullable: true
+          description: Width in mm
+        height:
+          type: number
+          format: float
+          nullable: true
+          description: Height in mm
+
+    HoleIntent:
+      type: object
+      properties:
+        diameter:
+          type: number
+          format: float
+          nullable: true
+          description: Hole diameter in mm
+        depth:
+          type: number
+          format: float
+          nullable: true
+          description: Hole depth in mm
+        location:
+          type: string
+          nullable: true
+          description: Hole location description
+          example: center
+
+    FilletIntent:
+      type: object
+      properties:
+        radius:
+          type: number
+          format: float
+          nullable: true
+          description: Fillet radius in mm
+        location:
+          type: string
+          nullable: true
+          description: Fillet location description
+          example: all edges
+
+    CadPart:
+      type: object
+      required:
+        - dimensions
+      properties:
+        shape:
+          type: string
+          enum:
+            - box
+          default: box
+          description: Base shape type (currently only box supported)
+        dimensions:
+          $ref: '#/components/schemas/Dimensions'
+        holes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hole'
+          default: []
+          description: List of holes to create
+        fillets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Fillet'
+          default: []
+          description: List of fillets to apply
+        material:
+          type: string
+          default: aluminum
+          nullable: true
+          description: Material for manufacturing context
+          example: aluminum
+
+    Dimensions:
+      type: object
+      required:
+        - length
+        - width
+        - height
+      properties:
+        length:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 1000
+          description: Length in mm
+          example: 100
+        width:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 1000
+          description: Width in mm
+          example: 50
+        height:
+          type: number
+          format: float
+          minimum: 10
+          maximum: 1000
+          description: Height in mm
+          example: 30
+
+    Position:
+      type: object
+      properties:
+        x:
+          type: number
+          format: float
+          default: 0
+          description: X coordinate in mm
+        y:
+          type: number
+          format: float
+          default: 0
+          description: Y coordinate in mm
+        z:
+          type: number
+          format: float
+          default: 0
+          description: Z coordinate in mm
+
+    Hole:
+      type: object
+      required:
+        - diameter
+        - depth
+      properties:
+        diameter:
+          type: number
+          format: float
+          minimum: 1
+          description: Hole diameter in mm (minimum 1mm for CNC machining)
+          example: 10
+        depth:
+          type: number
+          format: float
+          minimum: 0
+          description: Hole depth in mm
+          example: 20
+        position:
+          $ref: '#/components/schemas/Position'
+
+    Fillet:
+      type: object
+      required:
+        - radius
+      properties:
+        radius:
+          type: number
+          format: float
+          minimum: 0.5
+          description: Fillet radius in mm (minimum 0.5mm for CNC machining)
+          example: 5
+        edges:
+          type: string
+          enum:
+            - all
+            - top
+            - bottom
+          default: all
+          description: Which edges to apply fillet to
+
+    PartGenerationResult:
+      type: object
+      required:
+        - step_file_path
+        - status
+      properties:
+        step_file_path:
+          type: string
+          description: Path to generated STEP file
+          example: output/part_20260109_154108.step
+        status:
+          type: string
+          enum:
+            - success
+            - error
+          description: Generation status
+        message:
+          type: string
+          nullable: true
+          description: Optional status message
+
+    HTTPError:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: Configuration error: OpenAI API key not found

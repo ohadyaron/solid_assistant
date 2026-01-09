@@ -48,48 +48,124 @@ mechanical-assistant/
 
 #### Prerequisites
 
-- Python 3.10+
-- Poetry (recommended) or pip
+- **Python 3.10, 3.11, or 3.12** (NOT 3.13 - see [DEPENDENCIES.md](DEPENDENCIES.md))
+- **Poetry** for dependency management
 
 ### Installation
 
-1. Clone the repository:
+#### 1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd solid_assistant
 ```
 
-2. Install dependencies with Poetry:
+#### 2. Set up Python virtual environment with Poetry:
+
+**Important:** Use Python 3.12 (or 3.10/3.11) to avoid compatibility issues:
+
 ```bash
-poetry install
+# Check if you have Python 3.12
+python3.12 --version
+
+# Configure Poetry to use Python 3.12
+poetry env use python3.12
+
+# Verify the environment
+poetry env info
 ```
 
-Or with pip:
+#### 3. Install dependencies:
+
+Poetry will create a virtual environment and install all locked dependencies:
+
 ```bash
-pip install -e .
+poetry install --no-root
 ```
 
-3. Set up environment variables:
+This installs all dependencies from the locked `poetry.lock` file, ensuring reproducible builds.
+
+#### 4. Set up environment variables:
+
+For the `/api/v1/interpret` endpoint (optional if you only use `/api/v1/parts`):
+
 ```bash
 export OPENAI_API_KEY="your-openai-api-key"
 ```
 
-#### Running the Backend
 
-Start the FastAPI development server:
+#### Development Mode (with auto-reload):
 
 ```bash
-poetry run uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Or:
+**Expected output:**
+```
+INFO:     Started server process [xxxxx]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+#### Production Mode:
+
 ```bash
-uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-The API will be available at `http://localhost:8000`
+#### Accessing the Server:
 
-Interactive API documentation: `http://localhost:8000/docs`
+- **API Root:** http://localhost:8000/
+- **Interactive API Docs (Swagger UI):** http://localhost:8000/docs
+- **Alternative API Docs (ReDoc):** http://localhost:8000/redoc
+- **OpenAPI Spec:** http://localhost:8000/openapi.json
+- **Health Check:** http://localhost:8000/health
+
+#### Quick Server Test:
+
+```bash
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Test root endpoint
+curl http://localhost:8000/
+
+# Generate a simple part
+curl -X POST http://localhost:8000/api/v1/parts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shape": "box",
+    "dimensions": {"length": 100, "width": 50, "height": 30},
+    "material": "aluminum"
+  }'
+```
+
+### Virtual Environment Management
+
+#### Check current environment:
+```bash
+poetry env info
+```
+
+#### List all Poetry environments:
+```bash
+poetry env list
+```
+
+#### Remove environment:
+```bash
+poetry env remove python3.12
+```
+
+#### Activate environment manually (if needed):
+```bash
+source $(poetry env info --path)/bin/activate
+```
+
+#### Deactivate:
+```bash
+deactivate
+```
 
 ### Frontend Setup
 
@@ -199,24 +275,39 @@ Generates a STEP file from validated CAD part specification.
 }
 ```
 
-## Testing
+## Troubleshooting
 
 ### Backend Tests
 
 Run tests with pytest:
-
+=======
+### Tests are slow or stuck
+- **Problem:** Tests hang during collection or take >30 seconds
+- **Solution:** Ensure numpy < 2.0 is installed. See [DEPENDENCIES.md](DEPENDENCIES.md) for details.
 ```bash
-poetry run pytest
+poetry run pip install 'numpy>=1.20.0,<2.0'
 ```
 
-Or:
+### Python version mismatch
+- **Problem:** `Current Python version (3.13.x) is not allowed by the project`
+- **Solution:** Use Python 3.10-3.12
 ```bash
-pytest
+poetry env use python3.12
+poetry install --no-root
 ```
 
-Run with coverage:
+### CadQuery import errors
+- **Problem:** `ImportError: cannot import name 'IVtkOCC_Shape'`
+- **Solution:** Ensure correct cadquery-ocp version:
 ```bash
-poetry run pytest --cov=app tests/
+poetry run pip install cadquery==2.4.0 'cadquery-ocp>=7.7.0,<7.8'
+```
+
+### OpenAI API errors
+- **Problem:** 500 error on `/api/v1/interpret`
+- **Solution:** Set your OpenAI API key:
+```bash
+export OPENAI_API_KEY="your-key-here"
 ```
 
 ### Frontend Tests
@@ -257,6 +348,8 @@ The React frontend provides a user-friendly interface for the API:
 - Form validation with user-friendly error messages
 - Responsive design for mobile and desktop
 - Comprehensive test coverage
+=======
+For complete dependency information, see [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## Development
 

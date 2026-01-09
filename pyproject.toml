@@ -6,19 +6,29 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.13"
-fastapi = "^0.109.0"
-uvicorn = {extras = ["standard"], version = "^0.27.0"}
-pydantic = "^2.5.0"
-cadquery = "^2.4.0"
-langchain = "^0.1.0"
-langchain-openai = "^0.0.2"
-openai = "^1.7.0"
+python = ">=3.10,<3.13"
+fastapi = "0.128.0"
+uvicorn = {extras = ["standard"], version = "0.40.0"}
+pydantic = "2.12.5"
+# CadQuery with compatible versions - DO NOT UPGRADE without testing
+cadquery = "2.4.0"
+cadquery-ocp = ">=7.7.0,<7.8"
+numpy = ">=1.20.0,<2.0"  # numpy 2.x breaks nptyping compatibility
+nptyping = "2.0.1"
+nlopt = ">=2.7.0"  # CadQuery dependency, must support arm64
+# LangChain packages
+langchain = "1.2.3"
+langchain-core = "1.2.6"
+langchain-openai = "1.1.7"
+langgraph = "1.0.5"
+openai = "1.109.1"
+# Additional dependencies
+tiktoken = "0.12.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pytest-asyncio = "^0.23.2"
-httpx = "^0.26.0"
+pytest = "9.0.2"
+pytest-asyncio = "1.3.0"
+httpx = "0.26.0"
 
 [build-system]
 requires = ["poetry-core"]
