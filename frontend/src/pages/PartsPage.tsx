@@ -353,6 +353,16 @@ export function PartsPage() {
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => {
+                  const filename = result.step_file_path.split('/').pop() || result.step_file_path.split('\\').pop();
+                  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                  window.open(`${apiUrl}/api/v1/parts/download/${filename}`, '_blank');
+                }}
+                className="download-button"
+              >
+                📥 Download STEP File
+              </button>
               <p className="result-note">
                 The STEP file has been generated and saved on the server.
               </p>

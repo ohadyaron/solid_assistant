@@ -244,6 +244,29 @@
   margin-top: 1rem;
 }
 
+.download-button {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  margin: 1rem 0;
+}
+
+.download-button:hover {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.download-button:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 1024px) {
   .content-layout {
     grid-template-columns: 1fr;
