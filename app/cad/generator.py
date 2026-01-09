@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Dict, Literal
 
 from app.domain.intent import PartIntent
-from app.cad.cadquery_builder import build_step
-from app.cad.solidworks_builder import build_sldprt
+from app.cad.builder_interface import CADBuilderInterface
+from app.cad.cadquery_builder import CadQueryBuilder
+from app.cad.solidworks_builder import SolidWorksBuilder
 
 
 class CADGenerator:
@@ -16,9 +17,12 @@ class CADGenerator:
     
     This class provides a unified interface for generating CAD files using
     different engines (CadQuery for STEP files, SolidWorks for SLDPRT files).
+    All engines implement the same CADBuilderInterface and work with the same
+    PartIntent schema.
     
     Attributes:
         output_dir: Directory where generated CAD files will be saved
+        _builders: Dictionary mapping engine names to builder instances
     """
     
     def __init__(self, output_dir: str = "/tmp"):
@@ -31,6 +35,12 @@ class CADGenerator:
         self.output_dir = Path(output_dir)
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize builders - both inherit from CADBuilderInterface
+        self._builders: Dict[str, CADBuilderInterface] = {
+            "cadquery": CadQueryBuilder(),
+            "solidworks": SolidWorksBuilder()
+        }
     
     def generate(
         self,
@@ -40,8 +50,9 @@ class CADGenerator:
         """
         Generate a CAD file from PartIntent using the specified engine.
         
-        This method routes to the appropriate builder function based on the
-        engine parameter and returns a standardized response dictionary.
+        This method routes to the appropriate builder implementation based on the
+        engine parameter. All builders inherit from CADBuilderInterface and use
+        the same PartIntent schema, ensuring consistency across engines.
         
         Args:
             part: PartIntent specification containing shape, dimensions, holes, and fillets
@@ -68,22 +79,22 @@ class CADGenerator:
             /tmp/cad/part_20240109_123456.step
         """
         # Validate engine parameter
-        if engine not in ["cadquery", "solidworks"]:
+        if engine not in self._builders:
             return {
                 "status": "error",
                 "file_path": "",
                 "errors": [
                     f"Unsupported engine: '{engine}'. "
-                    f"Supported engines are: 'cadquery', 'solidworks'"
+                    f"Supported engines are: {', '.join(self._builders.keys())}"
                 ]
             }
         
         try:
-            # Route to appropriate builder based on engine
-            if engine == "cadquery":
-                file_path = build_step(part, self.output_dir)
-            elif engine == "solidworks":
-                file_path = build_sldprt(part, self.output_dir)
+            # Get the appropriate builder (all implement CADBuilderInterface)
+            builder = self._builders[engine]
+            
+            # Use the common interface method
+            file_path = builder.build(part, self.output_dir)
             
             # Return success response
             return {

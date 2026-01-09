@@ -1,11 +1,11 @@
 """
 Tests for CAD generator module.
-Tests the generic CAD generator and its builder functions.
+Tests the generic CAD generator and its builder classes.
 """
 import pytest
 from pathlib import Path
 from app.cad.generator import CADGenerator
-from app.cad.cadquery_builder import build_step
+from app.cad.cadquery_builder import CadQueryBuilder
 from app.domain.intent import PartIntent, DimensionIntent, HoleIntent, FilletIntent
 
 
@@ -155,22 +155,26 @@ def test_generate_missing_shape(tmp_path):
     assert len(result["errors"]) > 0
 
 
-def test_build_step_function(tmp_path):
-    """Test the build_step function directly."""
+def test_cadquery_builder_class(tmp_path):
+    """Test the CadQueryBuilder class directly."""
+    builder = CadQueryBuilder()
+    
     part = PartIntent(
         shape="box",
         dimensions=DimensionIntent(length=80.0, width=60.0, height=40.0)
     )
     
-    filepath = build_step(part, tmp_path)
+    filepath = builder.build(part, tmp_path)
     
     assert filepath.exists()
     assert filepath.suffix == ".step"
     assert filepath.parent == tmp_path
 
 
-def test_build_step_with_features(tmp_path):
-    """Test build_step with holes and fillets."""
+def test_cadquery_builder_with_features(tmp_path):
+    """Test CadQueryBuilder with holes and fillets."""
+    builder = CadQueryBuilder()
+    
     part = PartIntent(
         shape="box",
         dimensions=DimensionIntent(length=100.0, width=100.0, height=50.0),
@@ -182,7 +186,7 @@ def test_build_step_with_features(tmp_path):
         ]
     )
     
-    filepath = build_step(part, tmp_path)
+    filepath = builder.build(part, tmp_path)
     
     assert filepath.exists()
     assert filepath.stat().st_size > 0
@@ -208,15 +212,17 @@ def test_build_step_invalid_shape(tmp_path):
     assert "Unsupported engine" in result["errors"][0]
 
 
-def test_build_step_missing_dimensions(tmp_path):
+def test_cadquery_builder_missing_dimensions(tmp_path):
     """Test that missing dimensions raises error."""
+    builder = CadQueryBuilder()
+    
     part = PartIntent(
         shape="box",
         dimensions=None
     )
     
     with pytest.raises(ValueError):
-        build_step(part, tmp_path)
+        builder.build(part, tmp_path)
 
 
 def test_multiple_files_unique_names(tmp_path):
@@ -264,8 +270,10 @@ def test_generator_default_output_dir():
     assert generator.output_dir.exists()
 
 
-def test_build_step_partial_hole_data(tmp_path):
+def test_cadquery_builder_partial_hole_data(tmp_path):
     """Test that holes without complete data are skipped gracefully."""
+    builder = CadQueryBuilder()
+    
     part = PartIntent(
         shape="box",
         dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0),
@@ -276,13 +284,15 @@ def test_build_step_partial_hole_data(tmp_path):
     )
     
     # Should complete without error, skipping invalid holes
-    filepath = build_step(part, tmp_path)
+    filepath = builder.build(part, tmp_path)
     
     assert filepath.exists()
 
 
-def test_build_step_partial_fillet_data(tmp_path):
+def test_cadquery_builder_partial_fillet_data(tmp_path):
     """Test that fillets without radius are skipped gracefully."""
+    builder = CadQueryBuilder()
+    
     part = PartIntent(
         shape="box",
         dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0),
@@ -292,6 +302,6 @@ def test_build_step_partial_fillet_data(tmp_path):
     )
     
     # Should complete without error, skipping invalid fillets
-    filepath = build_step(part, tmp_path)
+    filepath = builder.build(part, tmp_path)
     
     assert filepath.exists()

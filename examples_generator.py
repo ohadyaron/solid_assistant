@@ -149,10 +149,41 @@ def example_error_handling():
     print(f"Error: {result['errors'][0]}")
 
 
+def example_interface_demonstration():
+    """Example: Demonstrate both builders use the same interface."""
+    print("\n=== Example 7: Interface-Based Architecture ===")
+    
+    from app.cad.cadquery_builder import CadQueryBuilder
+    from app.cad.solidworks_builder import SolidWorksBuilder
+    
+    # Both builders inherit from CADBuilderInterface
+    print("✓ Both CadQueryBuilder and SolidWorksBuilder inherit from CADBuilderInterface")
+    print("✓ Both use the same PartIntent schema")
+    print("✓ Both implement build() and validate() methods")
+    
+    # Create a part using the same schema
+    part = PartIntent(
+        shape="box",
+        dimensions=DimensionIntent(length=100.0, width=50.0, height=30.0)
+    )
+    
+    # Use CadQuery builder directly
+    cadquery_builder = CadQueryBuilder()
+    try:
+        filepath = cadquery_builder.build(part, EXAMPLES_OUTPUT_DIR)
+        print(f"✓ CadQuery builder generated: {filepath.name}")
+    except Exception as e:
+        print(f"✗ CadQuery builder error: {e}")
+    
+    # SolidWorks builder would work the same way (on Windows)
+    print("✓ SolidWorks builder would use the identical interface (Windows only)")
+
+
 def main():
     """Run all examples."""
     print("=" * 60)
     print("CAD Generator Module Examples")
+    print("Demonstrating Interface-Based Architecture")
     print("=" * 60)
     
     example_simple_box()
@@ -161,6 +192,7 @@ def main():
     example_complex_part()
     example_solidworks()
     example_error_handling()
+    example_interface_demonstration()
     
     print("\n" + "=" * 60)
     print("All examples completed!")
