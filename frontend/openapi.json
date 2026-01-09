@@ -1,0 +1,553 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Mechanical Assistant",
+    "description": "Generate CAD parts from natural language descriptions",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/interpret": {
+      "post": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Interpret Text",
+        "operationId": "interpret_text_api_v1_interpret_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parts": {
+      "post": {
+        "tags": [
+          "parts"
+        ],
+        "summary": "Generate Part",
+        "operationId": "generate_part_api_v1_parts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CadPart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartGenerationResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "root"
+        ],
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CadPart": {
+        "properties": {
+          "shape": {
+            "type": "string",
+            "const": "box",
+            "title": "Shape",
+            "default": "box"
+          },
+          "dimensions": {
+            "$ref": "#/components/schemas/Dimensions"
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/Hole"
+            },
+            "type": "array",
+            "title": "Holes"
+          },
+          "fillets": {
+            "items": {
+              "$ref": "#/components/schemas/Fillet"
+            },
+            "type": "array",
+            "title": "Fillets"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material",
+            "default": "aluminum"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dimensions"
+        ],
+        "title": "CadPart"
+      },
+      "DimensionIntent": {
+        "properties": {
+          "length": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "title": "DimensionIntent"
+      },
+      "Dimensions": {
+        "properties": {
+          "length": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Length",
+            "description": "Length in mm"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "description": "Width in mm"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "description": "Height in mm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "length",
+          "width",
+          "height"
+        ],
+        "title": "Dimensions"
+      },
+      "Fillet": {
+        "properties": {
+          "radius": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Radius",
+            "description": "Fillet radius in mm"
+          },
+          "edges": {
+            "type": "string",
+            "enum": [
+              "all",
+              "top",
+              "bottom"
+            ],
+            "title": "Edges",
+            "default": "all"
+          }
+        },
+        "type": "object",
+        "required": [
+          "radius"
+        ],
+        "title": "Fillet"
+      },
+      "FilletIntent": {
+        "properties": {
+          "radius": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radius"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "title": "FilletIntent"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Hole": {
+        "properties": {
+          "diameter": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Diameter",
+            "description": "Hole diameter in mm"
+          },
+          "depth": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Depth",
+            "description": "Hole depth in mm"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position",
+            "description": "Hole position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "diameter",
+          "depth"
+        ],
+        "title": "Hole"
+      },
+      "HoleIntent": {
+        "properties": {
+          "diameter": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diameter"
+          },
+          "depth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depth"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "title": "HoleIntent"
+      },
+      "InterpretRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Natural language description of the part"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "InterpretRequest"
+      },
+      "InterpretResponse": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/PartIntent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent"
+        ],
+        "title": "InterpretResponse"
+      },
+      "PartGenerationResult": {
+        "properties": {
+          "step_file_path": {
+            "type": "string",
+            "title": "Step File Path"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_file_path",
+          "status"
+        ],
+        "title": "PartGenerationResult"
+      },
+      "PartIntent": {
+        "properties": {
+          "shape": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "box"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shape"
+          },
+          "dimensions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DimensionIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holes": {
+            "items": {
+              "$ref": "#/components/schemas/HoleIntent"
+            },
+            "type": "array",
+            "title": "Holes"
+          },
+          "fillets": {
+            "items": {
+              "$ref": "#/components/schemas/FilletIntent"
+            },
+            "type": "array",
+            "title": "Fillets"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material"
+          },
+          "missing_information": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Information"
+          }
+        },
+        "type": "object",
+        "title": "PartIntent"
+      },
+      "Position": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X",
+            "description": "X coordinate in mm",
+            "default": 0.0
+          },
+          "y": {
+            "type": "number",
+            "title": "Y",
+            "description": "Y coordinate in mm",
+            "default": 0.0
+          },
+          "z": {
+            "type": "number",
+            "title": "Z",
+            "description": "Z coordinate in mm",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "Position"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
