@@ -112,7 +112,7 @@ def build_sldprt(part: PartIntent, output_dir: Path) -> Path:
         if sw_model:
             try:
                 sw_app.CloseDoc(sw_model.GetTitle())
-            except:
+            except Exception:
                 pass  # Best effort cleanup
         
         pythoncom.CoUninitialize()
